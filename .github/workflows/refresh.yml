@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
   schedule:
     # Off the top of the hour. GitHub schedules are best-effort, not an SLA.
-    - cron: '17,47 * * * *'
+    - cron: '3,33 * * * *'
 permissions:
   contents: write
 concurrency:
