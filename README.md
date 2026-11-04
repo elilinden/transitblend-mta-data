@@ -6,7 +6,7 @@ Dedicated **public data-only** repository. Contains maintenance scripts and offi
 
 1. Create a separate public, non-fork repository, suggested name `transitblend-mta-data`. Upload these allowlisted files to its default branch. Do not upload the private app repository.
 2. In **Settings → Actions → General**, allow the workflow. Its explicit `contents: write` permission must be permitted by your repository/organization policy. No personal access token or app credential is required.
-3. Run **Actions → Refresh official MTA schedule evidence → Run workflow** once. A successful run must publish a release with `manifest.json` and `schedule-index-<sha256>.json.gz`.
+3. Installing or updating the workflow/scripts on `main` starts a seed refresh automatically. It can also be started with **Actions → Refresh official MTA schedule evidence → Run workflow**. A successful run must publish a release with `manifest.json` and `schedule-index-<sha256>.json.gz`.
 4. Confirm `https://github.com/OWNER/REPOSITORY/releases/latest/download/manifest.json` is public and fresh. Only then set the backend's server-only `MTA_GTFS_MANIFEST_URL` to that exact URL. A backend deployment is required to activate an environment change. Never set a `NEXT_PUBLIC_` variable.
 5. Check `/api/health/transit` on the backend: expect `schedule.available=true`, `state=fresh`, a nonzero trip count and `refresh.state=success`. Exact trip matches additionally require fresh MTA realtime data and all existing identity checks.
 

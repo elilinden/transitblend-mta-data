@@ -1,5 +1,8 @@
 name: Refresh official MTA schedule evidence
 on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/refresh.yml', 'scripts/**']
   workflow_dispatch:
   schedule:
     # Off the top of the hour. GitHub schedules are best-effort, not an SLA.
