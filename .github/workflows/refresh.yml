@@ -1,0 +1,33 @@
+name: Refresh official MTA schedule evidence
+on:
+  workflow_dispatch:
+  schedule:
+    # Off the top of the hour. GitHub schedules are best-effort, not an SLA.
+    - cron: '17,47 * * * *'
+permissions:
+  contents: write
+concurrency:
+  group: mta-schedule-publication
+  cancel-in-progress: false
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Build and validate official schedule
+        id: build
+        continue-on-error: true
+        run: python3 scripts/build-mta-schedule.py --output schedule-index.json.gz
+      - name: Publish validated index or retain last valid evidence
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          BUILD_OUTCOME: ${{ steps.build.outcome }}
+        run: |
+          if [ "$BUILD_OUTCOME" = 'success' ]; then
+            node scripts/publish.mjs
+          else
+            node scripts/publish.mjs --failed
+          fi
