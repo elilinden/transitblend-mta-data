@@ -154,7 +154,9 @@ export function createDispatcher({ fetcher = fetch, now = Date.now, logger = con
     let publication;
     let dispatchAttempted = false;
     try {
-      const { body } = await bounded(RUNS_URL, { method: 'GET', headers, redirect: 'error' }, 131072, 'github');
+      // workerd does not implement redirect:'error'. Manual redirects are
+      // returned as non-2xx failures below, never followed with the token.
+      const { body } = await bounded(RUNS_URL, { method: 'GET', headers, redirect: 'manual' }, 131072, 'github');
       if (!Array.isArray(body?.workflow_runs) || body.workflow_runs.length > 5) throw new Failure('invalid_run_list');
       const runs = body.workflow_runs;
       if (runs.some(r => !positive(r.id) || r.head_branch !== 'main' || !Number.isFinite(epoch(r.created_at)) || epoch(r.created_at) > now()+MINUTE
@@ -165,7 +167,7 @@ export function createDispatcher({ fetcher = fetch, now = Date.now, logger = con
       if (runs.some(r => now() - epoch(r.created_at) < 10 * MINUTE)) return emit({ ok: true, outcome: 'skip_recent_run', scheduledFor, publication });
       if (publication.state === 'fresh_metadata' && publication.ageSeconds < 25 * 60) return emit({ ok: true, outcome: 'skip_recent_publication', scheduledFor, publication });
       dispatchAttempted = true;
-      const { response, body: accepted } = await bounded(DISPATCH_URL, { method: 'POST', headers, body: JSON.stringify({ ref: 'main' }), redirect: 'error' }, 4096, 'github');
+      const { response, body: accepted } = await bounded(DISPATCH_URL, { method: 'POST', headers, body: JSON.stringify({ ref: 'main' }), redirect: 'manual' }, 4096, 'github');
       if (response.status !== 200 || !positive(accepted?.workflow_run_id)) throw new Failure('dispatch_accepted_unconfirmed', response.status);
       return emit({ ok: true, outcome: 'dispatch_accepted', scheduledFor, workflowRunId: accepted.workflow_run_id, publication,
         completion: 'not_checked', validatedPublication: 'not_checked' });

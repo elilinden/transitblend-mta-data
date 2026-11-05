@@ -235,3 +235,31 @@ test('bootstrap is inert, activation has one half-hourly timer, and neither conf
   assert.equal(active.workers_dev, false); assert.equal(active.preview_urls, false); assert.deepEqual(active.routes, []);
   assert.deepEqual(Object.keys(active).sort(), ['compatibility_date','main','name','observability','preview_urls','routes','triggers','workers_dev']);
 });
+
+// Actual workerd rejects RequestInit.redirect='error' before outbound I/O.
+test('authenticated GitHub requests use the supported fail-closed manual redirect mode', async () => {
+  const f = fixture({ respond: (url, options) => {
+    if (url === RUNS_URL || url === DISPATCH_URL) assert.equal(options.redirect, 'manual');
+  } });
+  assert.equal((await f.dispatcher(controller, env)).outcome, 'dispatch_accepted');
+  assert.equal(f.posts().length, 1);
+});
+for (const atDispatch of [false, true]) {
+  test(`GitHub redirect at ${atDispatch ? 'dispatch' : 'run lookup'} is never followed with credentials`, async () => {
+    const f = fixture({ respond: (url, options) => {
+      if (url === RUNS_URL || url === DISPATCH_URL) assert.equal(options.redirect, 'manual');
+      if (url === (atDispatch ? DISPATCH_URL : RUNS_URL)) {
+        return new Response(null, { status: 302, headers: { location: 'https://untrusted.example/' } });
+      }
+    } });
+    const result = await f.dispatcher(controller, env);
+    assert.equal(result.ok, false);
+    assert.equal(result.outcome, 'github_api_failed');
+    assert.equal(result.httpStatus, 302);
+    assert.equal(f.posts().length, atDispatch ? 1 : 0);
+    assert.ok(f.calls.every(call => call.url !== 'https://untrusted.example/'));
+    assert.ok(!JSON.stringify(f.logs).includes(TOKEN));
+    assert.equal((await f.dispatcher(controller, env)).outcome, 'skip_duplicate_slot');
+    assert.equal(f.posts().length, atDispatch ? 1 : 0);
+  });
+}
