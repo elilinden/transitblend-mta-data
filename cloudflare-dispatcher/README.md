@@ -1,8 +1,22 @@
 # Free fallback timer for the MTA data workflow
 
-**Prepared fallback, not a deployed service.** Keep the native GitHub schedule enabled until a replacement's natural recurring executions and validated publications have been observed and the transition reviewed. The data repository's `main` workflow is authoritative for its current cron; this directory does not change it.
+**Deployment record: activated on 4 November 2026.** Keep the native GitHub schedule enabled until a replacement's natural recurring executions and validated publications have been observed and the transition reviewed. The data repository's `main` workflow is authoritative for its current cron; this directory does not change it.
 
 This Worker only dispatches **one fixed GitHub workflow on `main` in `elilinden/transitblend-mta-data`**. The existing standard GitHub-hosted runner downloads/builds/validates the official MTA schedule and atomically publishes GitHub Releases. No MTA archive or index processing, rider data, Google/Transit/rideshare API calls, storage binding, paid service or always-on server belongs in Cloudflare.
+
+## Observed activation evidence — 4 November 2026
+
+The 30-minute cron was enabled without adding HTTP routes or paid bindings. The first natural event exposed a Workers runtime incompatibility: `redirect: "error"` is unsupported and throws before I/O. The two authenticated calls now use `manual`, rejecting non-2xx redirects without forwarding credentials. The fix is commit `2a8c75b`; 43 mocked checks and a local workerd reproduction passed after correction.
+
+Actual unattended results, all times UTC on 5 November:
+
+- **02:11:36 Cloudflare cron:** dispatched [run 41953567738](https://github.com/elilinden/transitblend-mta-data/actions/runs/41953567738). Acquisition 02:11:46; publication 02:12:07; 55,545 trips. Downloaded bytes, SHA-256, schema/native chronology and evaluation-backend loading were verified. Worker CPU: 5 ms, no exception.
+- **02:38:40 native GitHub `schedule` event:** [run 41956548137](https://github.com/elilinden/transitblend-mta-data/actions/runs/41956548137) acquired another valid index at 02:38:46 and published at 02:39:15, again 55,545 trips. Its checksum, advancing acquisition/publication timestamps and evaluation-backend load were independently verified. This was a genuine schedule event, not a manual dispatch. One resumed native run does not prove reliable native recurrence.
+- **02:41:36 Cloudflare cron:** `skip_recent_run`, fresh publication metadata, no exception, 6 ms CPU. It correctly avoided duplicating the recent native refresh.
+
+These are **two automatic publications from different trigger sources**, not two Cloudflare-dispatched publications. The corrected Worker has one verified live dispatch/publication and one verified deduplication cycle. No manual refresh was used during this activation. The initial failed event is not counted as a successful refresh. Native GitHub scheduling remains enabled; disabling either timer requires a separately reviewed transition and longer observation.
+
+The evaluation backend recovered from a genuinely stale HTTP 503 to HTTP 200 with the exact validated `github_releases` generations. A short latest-redirect/backend-refresh propagation delay was observed. The two-hour freshness limit and strict trip matching were unchanged. Production application configuration, release and installed app were not modified. This point-in-time record is not a continuing availability guarantee; use the monitoring steps below.
 
 ## What it does
 
